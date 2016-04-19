@@ -1,0 +1,39 @@
+在连接主机与虚拟机的过程中遇到如下问题：主机ping不到虚拟机，虚拟机ping不到主机。
+
+问题涉及到虚拟机的网络设置问题，解决办法如下：
+1.了解虚拟机3种联网方式，（1）默认方式是NAT（网络转换地址）在centOS中网卡是eth0，虚拟系统可以通过宿主的网络访问互联网。
+但是，虚拟机可以ping到主机或者eth1，但是主机ping不到虚拟机，这对配置虚拟机服务器来说是很大问题，将进一步解说如何解决。
+（2）bridge（桥连）在这种模式下，虚拟的系统相当于局域网的一台独立的主机，可以手工配置TCP/IP配置信息，
+也可以通过网关或路由器访问网络（3）host-only方式，虚拟系统之间互通，但是与主机隔离。
+参考http://blog.csdn.net/collection4u/article/details/14127671一类的文章
+
+2.针对VirtualBox 虚拟机的网络设置，通过添加桥接网卡，来使主机上的设备可以直接访问虚拟机，标志ping虚拟网卡地址成功。
+具体步骤，
+####CenOS设置界面中以桥接网络的方式添加网卡2，
+修改网络配置文件 ifcfg-eth0，
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+这会打开一个文本编辑区域。按 i 键开始编辑，用上下左右键将光标移动到 ONBOOT=no 那里，删除 no，输入 yes。
+然后按 Ctrl+c 键退出编辑状态，再按 shift+; 组合键输入 : ，紧接着输入 wq 保存并退出文本编辑器。
+将 ifcfg-eth0 复制一份另存为 ifcfg-eth1:
+ cp -rf /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/ifcfg-eth1
+然后编辑 ifcfg-eth1（编辑方法同前述编辑 ifcfg-eth0 的方法）：
+
+vi /etc/sysconfig/network-scripts/ifcfg-eth1
+将其中的内容改为（其中 HWADDR 就是刚才记下的那一串字符，只不过用 : 分割开了）：
+
+DEVICE="eth1"
+HWADDR=08:00:27:F2:6B:E7
+TYPE=Ethernet
+NM_CONTROLLED=no
+ONBOOT=yes
+IPADDR=192.168.0.10
+NETMAK=255.255.255.0
+GATEWAY=192.168.0.1
+然后保存退出编辑器。接着执行下面的指令重新启动所有网络连接：
+
+service network restart
+
+参考https://cnzhx.net/blog/virtualbox-vm-network-setting/
+
+ping eth1地址如果能成功说明虚拟机网卡没问题，若存在问题 destination host unreachable 说明连不上主机网络，
+参考http://my.oschina.net/leopardsaga/blog/181190说是360wifi问题，最终一切设置好之后，重启电脑和虚拟机，ping成功。
